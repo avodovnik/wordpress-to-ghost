@@ -6,206 +6,248 @@ namespace WpXmlToGhostMigrator
 {
     public static class HtmlParser
     {
-        private enum State
+        public static HtmlDocument Parse(string content)
         {
-            Nowhere,
-            InsideNode,
-            ClosingNode
-        }
-
-        public static HtmlDocument Parse(string htmlContent)
-        {
-            var parserState = State.Nowhere;
-
-            // iterate through the characters
-            var document = new HtmlDocument();
-
             string buffer = String.Empty;
+
             var nodeStack = new Stack<Node>();
 
-            foreach (char c in htmlContent)
+            // we always start with that
+            nodeStack.Push(new HtmlDocument());
+
+            var insideToken = false;
+            var insideLiteral = false;
+            var insideComment = false;
+
+            char prevChar = char.MinValue;
+
+            // either we're a node, or a text, parse until we figure out
+            foreach (char c in content)
             {
                 switch (c)
                 {
                     case '<':
-                        // we're starting a node
-                        // flush buffer 
-                        FlushBuffer(buffer, document, nodeStack);
-                        buffer = String.Empty;
+                        // this is a bit horrible, but should actually work
+                        if (insideComment)
+                            goto default;
 
+                        // if we have any buffer
+                        if (!String.IsNullOrEmpty(buffer))
+                        {
+                            // it's likely text, so we should just assign it to the current node
+                            nodeStack.Peek().AddChild(new TextNode(buffer));
+                            buffer = String.Empty;
+                        }
+
+                        // mark that we're inside a token
+                        insideToken = true;
                         break;
 
                     case '>':
-                        // buffer is probably the contents (name, or end) of the node, we'll let it parse it (i.e. attributes)
-                        // I know this is inneficient, but it was a matter of getting it done first, then optimizing
-
-                        // there needs to be a node on the stack, otherwise, we have a problem
-                        if (!nodeStack.TryPeek(out Node node))
+                        if(insideComment)
                         {
-                            throw new Exception("An end tag was encountered, but no start tag was there to put a node on the stack.");
+                            if (buffer.EndsWith("--"))
+                            {
+                                // we were clearly in a comment node
+                                // which ends now 
+                                insideComment = false;
+                                insideToken = false;
+                                nodeStack.Peek().AddChild(new CommentNode(buffer.Trim().TrimEnd('-')));
+
+                                buffer = String.Empty;
+                            } else
+                            {
+                                goto default;
+                            }
+
+                            break;
                         }
-
-                        // let's give the buffer to the node, to re-parse (inefficient bit), but keep the node on the stack
-                        node.Parse(buffer);
-
-                        if (node.IsClosed)
+                        // when inside a token, this is a special case,
+                        // so make sure we handle it
+                        if (insideToken && !insideLiteral)
                         {
-                            // since the node is closed, it needs to go to the document
-                            document.AddNode(nodeStack.Pop());
-                        }
+                            // we've reached an end of a node
+                            insideToken = false;
+                            var node = NodeFactory.Create(buffer);
+                            buffer = String.Empty;
 
-                        buffer = string.Empty;
+                            // depending on what that node was, let's do something with it
+                            switch (node.Type)
+                            {
+                                case Node.NodeType.Opening:
+                                    nodeStack.Push(node);
+                                    break;
+                                case Node.NodeType.Closing:
+                                    var stacked = nodeStack.Pop();
+                                    // TODO: when the node is updated, update this :) 
+                                    //if (stacked.Name != node.Name)
+                                    //{
+                                    //    throw new Exception("Node mismatch: " + node.Name);
+                                    //}
+
+                                    // peek the next node (if it's root, it'll be the document, which is fine)
+                                    nodeStack.Peek().AddChild(stacked);
+                                    break;
+                                case Node.NodeType.SelfClosing:
+                                    nodeStack.Peek().AddChild(node);
+                                    break;
+                                default:
+                                    break;
+                            }
+                        }
+                        else
+                        {
+                            // we're not inside a token, so this seems valid
+                            buffer += c;
+                        }
                         break;
+
+                    case '"':
+                        if (insideComment) goto default;
+
+                        if (prevChar == '\\')
+                        {
+                            // escape char
+                            continue;
+                        }
+
+                        if (insideToken)
+                        {
+                            insideLiteral = !insideLiteral;
+                        }
+                        break;
+
+                    case '-':
+                        if(prevChar == '-')
+                        {
+                            // check if the buffer equals comment
+                            if(buffer == "!-" && insideToken)
+                            {
+                                // we are in a comment
+                                insideComment = true;
+                                buffer = String.Empty;
+                                break;
+                            }
+                        }
+                        goto default;
 
                     default:
                         buffer += c;
                         break;
                 }
+
+                prevChar = c;
             }
 
-            return document;
-        }
-
-        private static void FlushBuffer(string buffer, HtmlDocument document, Stack<Node> nodeStack)
-        {
-            var textNode = new NodeTextBlock(buffer);
-            // if there is a node in the node stack, that is still open, we can put it there
-            if (nodeStack.TryPeek(out Node node))
+            if(nodeStack.Count != 1)
             {
-                // we should never encounter a tag that is closed and still on the stack, but hey...
-                if (!node.IsClosed)
-                {
-                    node.AddChild(textNode);
-                    return;
-                }
-
-                // if we do get here, should we panic?
-                throw new Exception("There's a closed node on the stack - it wasn't addedd? Name: " + node.Name);
+                throw new Exception("Somehow nodes were left on the stack and unclosed.");
             }
 
-            // we should probably map this as a line into markdown?
-            document.AddNode(textNode);
+            return nodeStack.Pop() as HtmlDocument;
         }
 
-        public interface INode
+        private static class NodeFactory
+        {
+            public static Node Create(string buffer)
+            {
+                var assumedType = Node.NodeType.Opening;
+
+                if (buffer.StartsWith('/'))
+                    assumedType = Node.NodeType.Closing;
+                else if (buffer.EndsWith('/'))
+                    assumedType = Node.NodeType.SelfClosing;
+
+                return new Node()
+                {
+                    Type = assumedType,
+                    Name = buffer // TODO: TEMP
+                };
+            }
+        }
+
+        public class CommentNode : Node
+        {
+            public CommentNode(string content)
+            {
+                Content = content;
+            }
+
+            public string Content { get; }
+        }
+
+        public class HtmlDocument : Node
         {
 
         }
 
-        public class Node : INode
+        public class TextNode : Node
         {
-            public List<INode> Children { get; } = new List<INode>();
+            public TextNode(string textContent)
+            {
+                Text = textContent;
+            }
 
-            public Dictionary<string, string> Attributes { get; private set; } = new Dictionary<string, string>();
+            public string Text { get; }
+        }
+
+        public class Node
+        {
+            private List<Node> _nodes = new List<Node>();
+
+            public IEnumerable<Node> Children { get { return _nodes; } }
+
+            public NodeType Type { get; set; }
+
+            public enum NodeType
+            {
+                Text,
+                Opening,
+                Closing,
+                SelfClosing
+            }
+
+            public void AddChild(Node node)
+            {
+                this._nodes.Add(node);
+            }
 
             public string Name { get; set; }
-
-            public bool IsClosed { get; set; } = false;
-
-            /// <summary>
-            /// Parses the string between < and > and determines the node name, and attributes.
-            /// </summary>
-            /// <param name="nodeNameWithAttributes"></param>
-            public void Parse(string nodeNameWithAttributes)
-            {
-                var buffer = String.Empty;
-
-
-                var attributeName = String.Empty;
-                var insideAttribute = false;
-
-                if (nodeNameWithAttributes.StartsWith('/') || nodeNameWithAttributes.EndsWith('/'))
-                {
-                    // when we process the buffer, we need to close this tag
-                    IsClosed = true;
-                    nodeNameWithAttributes = nodeNameWithAttributes.Trim('/');
-                }
-
-                foreach (char c in nodeNameWithAttributes)
-                {
-                    switch (c)
-                    {
-                        case '=':
-                            // if we're inside an attribute, we need to copy it
-                            if (insideAttribute) { buffer += c; }
-
-                            // left side is attribute name, next up will be attribute value
-                            if (!string.IsNullOrEmpty(attributeName))
-                            {
-                                // something is wrong
-                                throw new Exception("An = was not expected here: " + nodeNameWithAttributes);
-                            }
-
-                            break;
-
-                        case '"':
-                            if (insideAttribute)
-                            {
-                                // we need to wrap an attribute up now
-                                insideAttribute = false;
-                                if (String.IsNullOrEmpty(attributeName))
-                                {
-                                    throw new Exception("We got an attribute value, but no attribute name: " + nodeNameWithAttributes);
-                                }
-
-                                this.Attributes.Add(attributeName, buffer);
-
-                                buffer = String.Empty;
-                                attributeName = String.Empty;
-                            }
-                            else
-                            {
-                                // this is likely a start of an attribute
-                                insideAttribute = true;
-                            }
-                            break;
-
-                        default:
-                            buffer += c;
-                            break;
-                    }
-                }
-
-                // if there's buffer, and the node name hasn't been set, it's likely
-                // the string was just the node name, and we can go from there
-                if (!String.IsNullOrEmpty(buffer) && String.IsNullOrEmpty(this.Name))
-                {
-                    this.Name = buffer.Trim();
-                }
-
-                // if it wasn't it's likely the tag was a closing one or it's a self closing tag anyway
-            }
-
-            public void AddChild(INode node)
-            {
-                this.Children.Add(node);
-            }
-        }
-
-        private class NodeTextBlock : INode
-        {
-            private readonly string _content;
-
-            public NodeTextBlock(string content)
-            {
-                this._content = content;
-            }
-        }
-
-        public class HtmlDocument
-        {
-            List<INode> _nodes = new List<INode>();
-
-            public void AddNode(INode node)
-            {
-                _nodes.Add(node);
-            }
-
-            public IEnumerable<INode> Nodes { get { return _nodes; } }
         }
     }
-
-
-
-
 }
+
+
+/*
+ * <node>
+ <child node/>
+ <aNodeAgain>text</aNodeAgain>
+</node>
+
+
+-node-
+  -closing
+  -opening
+  -self-closing
+
+-text
+
+
+node ... to stack
+
+self closing node, 
+  peek from stack, and put into children
+  opening node -> push to stack
+     text -> add as child to element in stack
+  closing node -> pop from stack, add to element in stack
+
+    
+    -- closign and self-closign are likely the same
+
+
+<!-- what happenes if this is a comment -->
+
+    "<!--" sets a flag
+    "-->" creates a comment node, and kills the flag
+     
+     */

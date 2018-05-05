@@ -71,7 +71,8 @@ namespace WpXmlToGhostMigrator
         private static void ReadContent(XElement node, GhostPost post)
         {
             // start parsing the content
-            throw new NotImplementedException();
+            var html = HtmlParser.Parse(node.Value);
+            Console.WriteLine($"Total number or root level nodes: {html.Children.Count()}");
         }
 
         private static void ReadCategory(XElement node, GhostPost post)
