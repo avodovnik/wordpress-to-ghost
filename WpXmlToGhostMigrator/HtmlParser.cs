@@ -103,8 +103,6 @@ namespace WpXmlToGhostMigrator
                         break;
 
                     case '"':
-                        if (insideComment) goto default;
-
                         if (prevChar == '\\')
                         {
                             // escape char
@@ -115,7 +113,7 @@ namespace WpXmlToGhostMigrator
                         {
                             insideLiteral = !insideLiteral;
                         }
-                        break;
+                        goto default;
 
                     case '-':
                         if(prevChar == '-')
@@ -157,6 +155,14 @@ namespace WpXmlToGhostMigrator
                     assumedType = Node.NodeType.Closing;
                 else if (buffer.EndsWith('/'))
                     assumedType = Node.NodeType.SelfClosing;
+
+
+                // TODO: hack
+                if(buffer.StartsWith("img") || buffer.StartsWith("br"))
+                {
+                    // images are a special case, and we can actually treat them as self-closing
+                    assumedType = Node.NodeType.SelfClosing;
+                }
 
                 return new Node()
                 {
