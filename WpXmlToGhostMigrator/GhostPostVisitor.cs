@@ -16,7 +16,7 @@ namespace WpXmlToGhostMigrator
             {
                 case "title":
                     post.Title = node.Value;
-                    Console.WriteLine($"Parsing {node.Value}");
+                    // Console.WriteLine($"Parsing {node.Value}");
                     break;
                 case "link":
                     // we'll only use this to later check the post
@@ -74,7 +74,9 @@ namespace WpXmlToGhostMigrator
 
             // start parsing the content
             var html = HtmlParser.Parse(node.Value);
-            // Console.WriteLine($"Total number or root level nodes: {html.Children.Count()}");
+            
+            var content = MarkdownVisitor.Process(html);
+            post.Markdown = content;
         }
 
         private static void ReadCategory(XElement node, GhostPost post)

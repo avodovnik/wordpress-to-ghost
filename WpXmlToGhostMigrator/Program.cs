@@ -15,7 +15,7 @@ namespace WpXmlToGhostMigrator
 
                 // Console.WriteLine("Enter a file location to open:");
                 // args = new string[] { Console.ReadLine() };
-                args = new string[] { "/Users/anze/Dev/blog.xml" } ;
+                args = new string[] { "/Users/anze/Dev/blog.xml" };
             }
 
             foreach (var file in args)
@@ -59,7 +59,7 @@ namespace WpXmlToGhostMigrator
             // and this needs to be special, as some tags are self-referencing... of course
 
             var elements = channelNode.Elements()
-                .Where(x => x.Name.LocalName == "category" ).ToArray();
+                .Where(x => x.Name.LocalName == "category").ToArray();
             var categories = new Dictionary<string, GhostTag>();
             foreach (var element in elements)
             {
@@ -91,6 +91,9 @@ namespace WpXmlToGhostMigrator
             foreach (var post in posts.Values)
             {
                 post.BuildLinks(attachments, categories, tags);
+
+                // transform the image url
+                post.Image = TransformUrl(post.Image);
             }
 
             // build the document
@@ -102,7 +105,15 @@ namespace WpXmlToGhostMigrator
 
             var document = new GhostExportDocument(data, new GhostExportDocumentMetadata());
 
-            System.Diagnostics.Debug.WriteLine(JsonConvert.SerializeObject(document));
+            Console.WriteLine(JsonConvert.SerializeObject(document));
+        }
+
+        private static string TransformUrl(string url)
+        {
+            if (string.IsNullOrEmpty(url)) return url;
+
+            // rules come here
+            return url;
         }
 
         private const string NS_Content = "http://purl.org/rss/1.0/modules/content/";

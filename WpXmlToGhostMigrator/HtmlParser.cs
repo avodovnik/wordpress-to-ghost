@@ -76,14 +76,9 @@ namespace WpXmlToGhostMigrator
                             switch (node.Type)
                             {
                                 case Node.NodeType.Opening:
-                                    Console.WriteLine($"Opening {node.Name}");
-
                                     nodeStack.Push(node);
                                     break;
                                 case Node.NodeType.Closing:
-                                    Console.WriteLine($"Closing {node.Name}");
-
-
                                     var stacked = nodeStack.Pop();
                                     // TODO: when the node is updated, update this :) 
                                     if (stacked.Name != node.Name)
@@ -95,8 +90,6 @@ namespace WpXmlToGhostMigrator
                                     nodeStack.Peek().AddChild(stacked);
                                     break;
                                 case Node.NodeType.SelfClosing:
-                                    Console.WriteLine($"Self closing {node.Name}");
-
                                     nodeStack.Peek().AddChild(node);
                                     break;
                                 default:
@@ -235,6 +228,11 @@ namespace WpXmlToGhostMigrator
             }
 
             public string Text { get; }
+
+            public override string ToString()
+            {
+                return Text;
+            }
         }
 
         public class Node
