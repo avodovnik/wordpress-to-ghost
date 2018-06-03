@@ -12,8 +12,10 @@ namespace WpXmlToGhostMigrator
         {
             if (args.Length == 0)
             {
-                Console.WriteLine("Enter a file location to open:");
-                args = new string[] { Console.ReadLine() };
+
+                // Console.WriteLine("Enter a file location to open:");
+                // args = new string[] { Console.ReadLine() };
+                args = new string[] { "/Users/anze/Dev/blog.xml" } ;
             }
 
             foreach (var file in args)

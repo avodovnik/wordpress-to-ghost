@@ -16,6 +16,7 @@ namespace WpXmlToGhostMigrator
             {
                 case "title":
                     post.Title = node.Value;
+                    Console.WriteLine($"Parsing {node.Value}");
                     break;
                 case "link":
                     // we'll only use this to later check the post
@@ -28,7 +29,7 @@ namespace WpXmlToGhostMigrator
                     post.Created = ReadDate(node.Value);
                     break;
                 case "http://purl.org/dc/elements/1.1/:creator":
-                    Console.WriteLine("Creator: " + node.Value);
+                    // Console.WriteLine("Creator: " + node.Value);
                     // TODO: implement
                     break;
                 case "description":
@@ -58,9 +59,9 @@ namespace WpXmlToGhostMigrator
                     break;
                 
                 default:
-                    Console.WriteLine("Panic!");
-                    Console.WriteLine($"\t\t{node.Name.NamespaceName}::{node.Name.LocalName}");
-                    Console.WriteLine($"\t\t\t{node.Value}");
+                    // Console.WriteLine("Panic!");
+                    // Console.WriteLine($"\t\t{node.Name.NamespaceName}::{node.Name.LocalName}");
+                    // Console.WriteLine($"\t\t\t{node.Value}");
                     break;
             }
             //Console.WriteLine($"\t\t{node.Name.NamespaceName}::{node.Name.LocalName}");
@@ -70,9 +71,10 @@ namespace WpXmlToGhostMigrator
 
         private static void ReadContent(XElement node, GhostPost post)
         {
+
             // start parsing the content
             var html = HtmlParser.Parse(node.Value);
-            Console.WriteLine($"Total number or root level nodes: {html.Children.Count()}");
+            // Console.WriteLine($"Total number or root level nodes: {html.Children.Count()}");
         }
 
         private static void ReadCategory(XElement node, GhostPost post)

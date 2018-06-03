@@ -44,7 +44,7 @@ namespace WpXmlToGhostMigrator
                         break;
 
                     case '>':
-                        if(insideComment)
+                        if (insideComment)
                         {
                             if (buffer.EndsWith("--"))
                             {
@@ -55,7 +55,8 @@ namespace WpXmlToGhostMigrator
                                 nodeStack.Peek().AddChild(new CommentNode(buffer.Trim().TrimEnd('-')));
 
                                 buffer = String.Empty;
-                            } else
+                            }
+                            else
                             {
                                 goto default;
                             }
@@ -75,20 +76,27 @@ namespace WpXmlToGhostMigrator
                             switch (node.Type)
                             {
                                 case Node.NodeType.Opening:
+                                    Console.WriteLine($"Opening {node.Name}");
+
                                     nodeStack.Push(node);
                                     break;
                                 case Node.NodeType.Closing:
+                                    Console.WriteLine($"Closing {node.Name}");
+
+
                                     var stacked = nodeStack.Pop();
                                     // TODO: when the node is updated, update this :) 
-                                    //if (stacked.Name != node.Name)
-                                    //{
-                                    //    throw new Exception("Node mismatch: " + node.Name);
-                                    //}
+                                    if (stacked.Name != node.Name)
+                                    {
+                                        throw new Exception("Node mismatch: " + node.Name);
+                                    }
 
                                     // peek the next node (if it's root, it'll be the document, which is fine)
                                     nodeStack.Peek().AddChild(stacked);
                                     break;
                                 case Node.NodeType.SelfClosing:
+                                    Console.WriteLine($"Self closing {node.Name}");
+
                                     nodeStack.Peek().AddChild(node);
                                     break;
                                 default:
@@ -116,10 +124,10 @@ namespace WpXmlToGhostMigrator
                         goto default;
 
                     case '-':
-                        if(prevChar == '-')
+                        if (prevChar == '-')
                         {
                             // check if the buffer equals comment
-                            if(buffer == "!-" && insideToken)
+                            if (buffer == "!-" && insideToken)
                             {
                                 // we are in a comment
                                 insideComment = true;
@@ -137,12 +145,37 @@ namespace WpXmlToGhostMigrator
                 prevChar = c;
             }
 
-            if(nodeStack.Count != 1)
+            if (nodeStack.Count != 1)
             {
-                throw new Exception("Somehow nodes were left on the stack and unclosed.");
+                // cleanup the nodes, if possible,
+                // but make sure the last one is always the document
+                while (nodeStack.Count > 1)
+                {
+                    var leftover = nodeStack.Pop();
+                    if (IsCleanable(leftover))
+                    {
+                        nodeStack.Peek().AddChild(leftover);
+                    }
+                }
+
+                if(nodeStack.Count != 1)
+                    throw new Exception("Somehow nodes were left on the stack and unclosed.");
             }
 
             return nodeStack.Pop() as HtmlDocument;
+        }
+
+        private static bool IsCleanable(Node node)
+        {
+            // if the tag is something like p, we can clean it up fairly easily, 
+            // because we just assume we can close it and put to the parent
+            switch (node.Name)
+            {
+                case "p":
+                    return true;
+                default:
+                    return false;
+            }
         }
 
         private static class NodeFactory
@@ -158,16 +191,23 @@ namespace WpXmlToGhostMigrator
 
 
                 // TODO: hack
-                if(buffer.StartsWith("img") || buffer.StartsWith("br"))
+                if (buffer.StartsWith("img") || buffer.StartsWith("br"))
                 {
                     // images are a special case, and we can actually treat them as self-closing
                     assumedType = Node.NodeType.SelfClosing;
                 }
 
+                var name = buffer.Trim('/');
+                int i = name.IndexOf(" ");
+                if (i > 0)
+                {
+                    name = name.Substring(0, i);
+                }
+
                 return new Node()
                 {
                     Type = assumedType,
-                    Name = buffer // TODO: TEMP
+                    Name = name // TODO: TEMP
                 };
             }
         }
