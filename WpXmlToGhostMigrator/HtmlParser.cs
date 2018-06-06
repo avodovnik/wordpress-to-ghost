@@ -313,12 +313,26 @@ namespace WpXmlToGhostMigrator
                 // split into lines
                 List<string> newLines = new List<string>();
                 var lines = textContent.Split('\n');
+                bool prevLineIsEmpty = false;
                 foreach (var line in lines)
                 {
                     var lx = line.Trim('\r', '\n', '\t');
                     if (!string.IsNullOrWhiteSpace(lx))
                     {
+                        prevLineIsEmpty = false;
                         newLines.Add(lx);
+                    }
+                    else
+                    {
+                        if (prevLineIsEmpty)
+                        {
+                            newLines.Add("\r\n");
+                            prevLineIsEmpty = false; // fake it 'till we make it
+                        }
+                        else
+                        {
+                            prevLineIsEmpty = true;
+                        }
                     }
                 }
 
