@@ -42,7 +42,7 @@ namespace WpXmlToGhostMigrator.Converters
                 bodyBuilder.AppendLine("```"); 
             } else
             {
-                bodyBuilder.Append("`").Append(content).Append("` ");
+                bodyBuilder.Append("`").Append(content).Append("`");
             }
 
             return false;

@@ -10,6 +10,7 @@ namespace WpXmlToGhostMigrator.Converters
 
         public override void CloseNode(HtmlParser.Node node, StringBuilder bodyBuilder)
         {
+            bodyBuilder.AppendLine();
         }
 
         public override bool OpenNode(HtmlParser.Node node, StringBuilder bodyBuilder)

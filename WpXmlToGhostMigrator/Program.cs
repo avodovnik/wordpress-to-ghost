@@ -93,7 +93,7 @@ namespace WpXmlToGhostMigrator
                 post.BuildLinks(attachments, categories, tags);
 
                 // transform the image url
-                post.Image = TransformUrl(post.Image);
+               post.Image = TransformUrl(post.Image);
             }
 
             // build the document

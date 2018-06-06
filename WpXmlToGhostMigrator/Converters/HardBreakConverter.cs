@@ -14,7 +14,7 @@ namespace WpXmlToGhostMigrator.Converters
 
         public override bool OpenNode(HtmlParser.Node node, StringBuilder bodyBuilder)
         {
-            bodyBuilder.AppendLine();
+            bodyBuilder.AppendLine().AppendLine(); 
 
             // this should never actually happen, but hey...
             return true;

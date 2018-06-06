@@ -35,7 +35,11 @@ namespace WpXmlToGhostMigrator
                         if (!String.IsNullOrEmpty(buffer))
                         {
                             // it's likely text, so we should just assign it to the current node
-                            nodeStack.Peek().AddChild(new TextNode(buffer));
+                            if (!String.IsNullOrWhiteSpace(buffer))
+                            {
+                                nodeStack.Peek().AddChild(new TextNode(buffer));
+                            }
+
                             buffer = String.Empty;
                         }
 
@@ -71,6 +75,9 @@ namespace WpXmlToGhostMigrator
                             insideToken = false;
                             var node = NodeFactory.Create(buffer);
                             buffer = String.Empty;
+
+                            if (node == null)
+                                continue;
 
                             // depending on what that node was, let's do something with it
                             switch (node.Type)
@@ -184,6 +191,8 @@ namespace WpXmlToGhostMigrator
         {
             public static Node Create(string buffer)
             {
+                buffer = (buffer ?? string.Empty).Trim('\r', '\n', ' ');
+
                 var assumedType = Node.NodeType.Opening;
 
                 if (buffer.StartsWith('/'))
@@ -252,17 +261,18 @@ namespace WpXmlToGhostMigrator
                                 value = buffer;
 
                                 // add the value to the dictionary
-                                if(attributes.ContainsKey(name))
+                                if (attributes.ContainsKey(name))
                                 {
                                     attributes[name] = String.Join(',', attributes[name], value);
-                                } else
+                                }
+                                else
                                 {
                                     attributes.Add(name, value);
                                 }
 
                                 buffer = string.Empty;
                                 name = string.Empty;
-                                
+
                             }
                             else
                             {
@@ -300,7 +310,19 @@ namespace WpXmlToGhostMigrator
         {
             public TextNode(string textContent)
             {
-                Text = textContent;
+                // split into lines
+                List<string> newLines = new List<string>();
+                var lines = textContent.Split('\n');
+                foreach (var line in lines)
+                {
+                    var lx = line.Trim('\r', '\n', '\t');
+                    if (!string.IsNullOrWhiteSpace(lx))
+                    {
+                        newLines.Add(lx);
+                    }
+                }
+
+                Text = string.Join("\r\n", newLines);
             }
 
             public string Text { get; }

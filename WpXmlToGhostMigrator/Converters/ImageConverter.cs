@@ -18,7 +18,7 @@ namespace WpXmlToGhostMigrator.Converters
             if (string.IsNullOrEmpty(src)) return false;
 
             // ![alt text](https://github.com/adam-p/markdown-here/raw/master/src/common/images/icon48.png "Logo Title Text 1")
-            bodyBuilder.AppendFormat("![{0}]({1} \"{2}\") ", node.Attributes.GetValueOrDefault("alt"), src, node.Attributes.GetValueOrDefault("title"));
+            bodyBuilder.AppendFormat("![{0}]({1} \"{2}\")", node.Attributes.GetValueOrDefault("alt"), src, node.Attributes.GetValueOrDefault("title"));
 
             return false;
         }

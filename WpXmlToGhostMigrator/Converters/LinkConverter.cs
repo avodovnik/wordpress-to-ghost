@@ -10,7 +10,7 @@ namespace WpXmlToGhostMigrator.Converters
 
         public override void CloseNode(HtmlParser.Node node, StringBuilder bodyBuilder)
         {
-            bodyBuilder.Append("](").Append(node.Attributes.GetValueOrDefault("href", "")).Append(") ");
+            bodyBuilder.Append("](").Append(node.Attributes.GetValueOrDefault("href", "")).Append(")");
         }
 
         public override bool OpenNode(HtmlParser.Node node, StringBuilder bodyBuilder)
