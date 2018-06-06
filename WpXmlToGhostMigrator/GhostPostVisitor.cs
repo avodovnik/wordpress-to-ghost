@@ -74,7 +74,8 @@ namespace WpXmlToGhostMigrator
 
             // start parsing the content
             var html = HtmlParser.Parse(node.Value);
-            
+            html.Name = post.Title;
+
             var content = MarkdownVisitor.Process(html);
             post.Markdown = content;
         }

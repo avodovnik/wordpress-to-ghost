@@ -113,6 +113,8 @@ namespace WpXmlToGhostMigrator
             if (string.IsNullOrEmpty(url)) return url;
 
             // rules come here
+            url = url.Replace("http://www.vodovnik.com/wp-content/uploads/", "/content/images/old/");
+
             return url;
         }
 

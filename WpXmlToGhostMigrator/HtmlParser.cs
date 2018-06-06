@@ -138,6 +138,15 @@ namespace WpXmlToGhostMigrator
                 prevChar = c;
             }
 
+            // if stuff left on buffer, means we have additional text
+            // if we have any buffer
+            if (!String.IsNullOrEmpty(buffer))
+            {
+                // it's likely text, so we should just assign it to the current node
+                nodeStack.Peek().AddChild(new TextNode(buffer));
+                buffer = String.Empty;
+            }
+
             if (nodeStack.Count != 1)
             {
                 // cleanup the nodes, if possible,
@@ -151,7 +160,7 @@ namespace WpXmlToGhostMigrator
                     }
                 }
 
-                if(nodeStack.Count != 1)
+                if (nodeStack.Count != 1)
                     throw new Exception("Somehow nodes were left on the stack and unclosed.");
             }
 
@@ -192,16 +201,83 @@ namespace WpXmlToGhostMigrator
 
                 var name = buffer.Trim('/');
                 int i = name.IndexOf(" ");
+                var attributes = new Dictionary<string, string>();
+
                 if (i > 0)
                 {
                     name = name.Substring(0, i);
+
+                    // let's parse attributes
+                    var attString = buffer.Substring(i);
+                    attributes = ParseAttributes(attString);
                 }
+
 
                 return new Node()
                 {
                     Type = assumedType,
-                    Name = name // TODO: TEMP
+                    Name = name, // TODO: TEMP
+                    Attributes = attributes
                 };
+            }
+
+            private static Dictionary<string, string> ParseAttributes(string str)
+            {
+                var attributes = new Dictionary<string, string>();
+
+                str = (str ?? string.Empty).Trim();
+
+                string buffer = String.Empty;
+                // TODO: we're double parsing this, so think about optimising
+
+                var name = string.Empty;
+                var value = string.Empty;
+                var insideAttribute = false;
+
+                foreach (var c in str)
+                {
+                    switch (c)
+                    {
+                        case '=':
+                            if (insideAttribute)
+                                goto default;
+
+                            name = buffer.Trim();
+                            buffer = string.Empty;
+
+                            break;
+                        case '"':
+                            if (insideAttribute)
+                            {
+                                value = buffer;
+
+                                // add the value to the dictionary
+                                if(attributes.ContainsKey(name))
+                                {
+                                    attributes[name] = String.Join(',', attributes[name], value);
+                                } else
+                                {
+                                    attributes.Add(name, value);
+                                }
+
+                                buffer = string.Empty;
+                                name = string.Empty;
+                                
+                            }
+                            else
+                            {
+                                // don't really have to do anything
+                            }
+
+                            insideAttribute = !insideAttribute;
+                            break;
+                        default:
+                            buffer += c;
+                            break;
+                    }
+                }
+
+                return attributes;
             }
         }
 
@@ -257,6 +333,8 @@ namespace WpXmlToGhostMigrator
             }
 
             public string Name { get; set; }
+
+            public Dictionary<string, string> Attributes { get; internal set; }
         }
     }
 }
