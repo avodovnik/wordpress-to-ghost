@@ -6,7 +6,7 @@ namespace WpXmlToGhostMigrator.Converters
 {
     public class HardBreakConverter : MarkdownConverterBase
     {
-        public override string[] SupportedTags => new string[] { "br" };
+        public override string[] SupportedTags => new string[] { "br", "p" };
 
         public override void CloseNode(HtmlParser.Node node, StringBuilder bodyBuilder)
         {

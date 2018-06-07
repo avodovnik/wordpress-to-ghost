@@ -9,8 +9,21 @@ namespace WpXmlToGhostMigrator.Converters
 
         public override void CloseNode(HtmlParser.Node node, StringBuilder bodyBuilder)
         {
+            // sometimes the emphasis ends with a whitespace character which is slightly 
+            // annoying, but valid in HTML - so we move it after our node ending
+            var suffix = bodyBuilder.ToString().Substring(bodyBuilder.Length - 1);
+            if (String.IsNullOrWhiteSpace(suffix))
+            {
+                bodyBuilder.Remove(bodyBuilder.Length - 1, 1);
+            }
+            else { suffix = null; }
+
             Process(node, bodyBuilder);
-            //bodyBuilder.Append("");
+
+            if(suffix != null)
+            {
+                bodyBuilder.Append(suffix);
+            }
         }
 
         public override bool OpenNode(HtmlParser.Node node, StringBuilder bodyBuilder)
