@@ -1,7 +1,9 @@
 ﻿using Newtonsoft.Json;
 using System;
 using System.Collections.Generic;
+using System.IO;
 using System.Linq;
+using System.Text;
 using System.Xml.Linq;
 
 namespace WpXmlToGhostMigrator
@@ -20,13 +22,13 @@ namespace WpXmlToGhostMigrator
 
             foreach (var file in args)
             {
-                ProcessFile(file);
+                ProcessFile(file, "C:/dev/temp/output-test.json");
             }
 
             Console.ReadLine();
         }
 
-        private static void ProcessFile(string path)
+        private static void ProcessFile(string path, string outputPath)
         {
             // guard the path, that it exists
             if (!System.IO.File.Exists(path))
@@ -105,7 +107,12 @@ namespace WpXmlToGhostMigrator
 
             var document = new GhostExportDocument(data, new GhostExportDocumentMetadata());
 
-            Console.WriteLine(JsonConvert.SerializeObject(document));
+            var jsonOutput = JsonConvert.SerializeObject(document);
+
+            // write it as a simple UTF8 file, without BOM
+            File.WriteAllText(outputPath, jsonOutput, new UTF8Encoding(false));
+
+            //Console.WriteLine(JsonConvert.SerializeObject(document));
         }
 
         private static string TransformUrl(string url)
