@@ -27,6 +27,7 @@ namespace WpXmlToGhostMigrator
                 switch (c)
                 {
                     case '<':
+                    //case '[': // the [ is a wordpress directive, but it's essentially the same code
                         // this is a bit horrible, but should actually work
                         if (insideComment)
                             goto default;
@@ -48,6 +49,7 @@ namespace WpXmlToGhostMigrator
                         break;
 
                     case '>':
+                    //case ']':
                         if (insideComment)
                         {
                             if (buffer.EndsWith("--"))
@@ -73,7 +75,7 @@ namespace WpXmlToGhostMigrator
                         {
                             // we've reached an end of a node
                             insideToken = false;
-                            var node = NodeFactory.Create(buffer);
+                            var node = NodeFactory.Create(buffer, c);
                             buffer = String.Empty;
 
                             if (node == null)
@@ -189,17 +191,20 @@ namespace WpXmlToGhostMigrator
 
         private static class NodeFactory
         {
-            public static Node Create(string buffer)
+            public static Node Create(string buffer, char tokenChar)
             {
                 buffer = (buffer ?? string.Empty).Trim('\r', '\n', ' ');
 
                 var assumedType = Node.NodeType.Opening;
 
-                if (buffer.StartsWith('/'))
+                // if the node is a Wordpress directive ([), we can assume the 
+                // self closing tag
+                if (tokenChar == '[' || tokenChar == ']')
+                    assumedType = Node.NodeType.Directive;
+                else if (buffer.StartsWith('/'))
                     assumedType = Node.NodeType.Closing;
                 else if (buffer.EndsWith('/'))
                     assumedType = Node.NodeType.SelfClosing;
-
 
                 // TODO: hack
                 if (buffer.StartsWith("img") || buffer.StartsWith("br"))
@@ -331,6 +336,7 @@ namespace WpXmlToGhostMigrator
                         }
                         else
                         {
+                            newLines.Add("\r\n"); // TODO: testing... what this does
                             prevLineIsEmpty = true;
                         }
                     }
@@ -360,7 +366,8 @@ namespace WpXmlToGhostMigrator
                 Text,
                 Opening,
                 Closing,
-                SelfClosing
+                SelfClosing,
+                Directive
             }
 
             public void AddChild(Node node)

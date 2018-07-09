@@ -4,6 +4,7 @@ using System.Collections.Generic;
 using System.Globalization;
 using System.Linq;
 using System.Text;
+using System.Text.RegularExpressions;
 using System.Xml.Linq;
 
 namespace WpXmlToGhostMigrator
@@ -57,7 +58,7 @@ namespace WpXmlToGhostMigrator
                 case "http://wordpress.org/export/1.2/:post_date":
                     // ignore
                     break;
-                
+
                 default:
                     // Console.WriteLine("Panic!");
                     // Console.WriteLine($"\t\t{node.Name.NamespaceName}::{node.Name.LocalName}");
@@ -71,13 +72,29 @@ namespace WpXmlToGhostMigrator
 
         private static void ReadContent(XElement node, GhostPost post)
         {
-
             // start parsing the content
-            var html = HtmlParser.Parse(node.Value);
+            var htmlContent = PreprocessContent(node.Value);
+
+            var html = HtmlParser.Parse(htmlContent);
             html.Name = post.Title;
 
             var content = MarkdownVisitor.Process(html);
             post.Markdown = content;
+        }
+
+        private static string PreprocessContent(string content)
+        {
+            // TODO: move this to something else
+            Regex gallery = new Regex(@"(\[)(gallery.*?)(\])", RegexOptions.None);
+            Regex caption = new Regex(@"(\[)(\/?caption.*?)(\])", RegexOptions.None);
+
+            // there are some "pre-processing" things we need to do, and this 
+            // is the perfect place to do it
+            content = gallery.Replace(content, m => $"<wp-{m.Groups[2].Value}/>");
+
+            // out caption match is slightly different, in that we expect a closing tag
+            content = caption.Replace(content, m => $"<{m.Groups[2].Value}>"); 
+            return content;
         }
 
         private static void ReadCategory(XElement node, GhostPost post)
@@ -85,7 +102,7 @@ namespace WpXmlToGhostMigrator
             var domain = node.Attributes().Single(x => x.Name == "domain");
             var nicename = node.Attributes().Single(x => x.Name == "nicename");
 
-            switch(domain.Value)
+            switch (domain.Value)
             {
                 case "post_tag":
                     post.Tags.Add(nicename.Value);

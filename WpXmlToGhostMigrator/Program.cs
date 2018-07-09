@@ -27,6 +27,22 @@ namespace WpXmlToGhostMigrator
 
             Console.ReadLine();
         }
+        
+        // TODO: move this
+        public class FileContext
+        {
+            private static FileContext _instance = null;
+            public static FileContext Current
+            {
+                get
+                {
+                    if (_instance == null) _instance = new FileContext();
+                    return _instance;
+                }
+            }
+
+            public Dictionary<int, WordpressAttachment> Attachments { get; set; }
+        }
 
         private static void ProcessFile(string path, string outputPath)
         {
@@ -84,6 +100,9 @@ namespace WpXmlToGhostMigrator
               .Select(p => Process<WordpressAttachment>(p, (node, item) => WordpressAttachmentVisitor.Visit(node, item)))
               .ToDictionary(x => x.Id, x => x);
 
+            // TODO: this is horrible, but it'll have to do for now
+            FileContext.Current.Attachments = attachments;
+
             var posts = channelNode.Elements()
                 .Where(x => x.Name.LocalName == "item" && x.Descendants().Single(p => p.Name.LocalName == "post_type").Value == "post")
                 .Select(p => Process<GhostPost>(p, (node, item) => GhostPostVisitor.Process(node, item)))
@@ -120,7 +139,7 @@ namespace WpXmlToGhostMigrator
             if (string.IsNullOrEmpty(url)) return url;
 
             // rules come here
-            url = url.Replace("http://www.vodovnik.com/wp-content/uploads/", "/content/images/old/");
+            url = url.Replace("http://www.vodovnik.com/wp-content/uploads/", "/content/images/");
 
             return url;
         }

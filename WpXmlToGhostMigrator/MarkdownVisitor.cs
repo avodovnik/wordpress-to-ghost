@@ -20,6 +20,8 @@ namespace WpXmlToGhostMigrator
             _converters.RegisterConverter<LinkConverter>();
             _converters.RegisterConverter<ImageConverter>();
             _converters.RegisterConverter<ListItemConverter>();
+            _converters.RegisterConverter<CaptionConverter>();
+            _converters.RegisterConverter<GalleryConverter>();
         }
 
         public static string Process(HtmlParser.Node document)
